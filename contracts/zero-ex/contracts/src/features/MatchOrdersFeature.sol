@@ -21,7 +21,6 @@ pragma experimental ABIEncoderV2;
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "@0x/contracts-utils/contracts/src/LibRichErrors.sol";
 import "@0x/contracts-exchange-libs/contracts/src/LibExchangeRichErrors.sol";
-import "./interfaces/IMatchOrders.sol";
 import "./libs/LibNativeOrder.sol";
 import "./libs/LibSignature.sol";
 import "./native_orders/NativeOrdersInfo.sol";
@@ -31,7 +30,6 @@ import "../fixins/FixinTokenSpender.sol";
 import "../migrations/LibMigrate.sol";
 
 contract MatchOrdersFeature is
-    IMatchOrders,
     NativeOrdersInfo,
     FixinTokenSpender
 {
