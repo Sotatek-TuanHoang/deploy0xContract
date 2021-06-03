@@ -320,7 +320,6 @@ abstract contract NativeOrdersInfo is
     {
         LibNativeOrdersStorage.Storage storage stor =
             LibNativeOrdersStorage.getStorage();
-        LibNativeOrdersStorage
         // Get the filled and direct cancel state.
         {
             // The high bit of the raw taker token filled amount will be set
