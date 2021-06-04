@@ -24,6 +24,7 @@
         "generated-artifacts/InitialMigration.json",
         "generated-artifacts/LiquidityProviderFeature.json",
         "generated-artifacts/LogMetadataTransformer.json",
+        "generated-artifacts/MatchOrdersFeature.json",
         "generated-artifacts/MetaTransactionsFeature.json",
         "generated-artifacts/MultiplexFeature.json",
         "generated-artifacts/NativeOrdersFeature.json",

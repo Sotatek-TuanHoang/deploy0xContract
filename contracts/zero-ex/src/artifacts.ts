@@ -26,6 +26,7 @@ import * as ITransformERC20Feature from '../generated-artifacts/ITransformERC20F
 import * as IZeroEx from '../generated-artifacts/IZeroEx.json';
 import * as LiquidityProviderFeature from '../generated-artifacts/LiquidityProviderFeature.json';
 import * as LogMetadataTransformer from '../generated-artifacts/LogMetadataTransformer.json';
+import * as MatchOrdersFeature from '../generated-artifacts/MatchOrdersFeature.json';
 import * as MetaTransactionsFeature from '../generated-artifacts/MetaTransactionsFeature.json';
 import * as MultiplexFeature from '../generated-artifacts/MultiplexFeature.json';
 import * as NativeOrdersFeature from '../generated-artifacts/NativeOrdersFeature.json';
@@ -60,6 +61,7 @@ export const artifacts = {
     LiquidityProviderFeature: LiquidityProviderFeature as ContractArtifact,
     ILiquidityProviderFeature: ILiquidityProviderFeature as ContractArtifact,
     NativeOrdersFeature: NativeOrdersFeature as ContractArtifact,
+    MatchOrdersFeature: MatchOrdersFeature as ContractArtifact,
     INativeOrdersFeature: INativeOrdersFeature as ContractArtifact,
     FeeCollectorController: FeeCollectorController as ContractArtifact,
     FeeCollector: FeeCollector as ContractArtifact,

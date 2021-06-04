@@ -16,6 +16,7 @@ import {
     SimpleFunctionRegistryFeatureContract,
     TransformERC20FeatureContract,
     ZeroExContract,
+    MatchOrdersFeatureContract,
 } from './wrappers';
 
 // tslint:disable: completed-docs
@@ -152,7 +153,7 @@ const DEFAULT_FULL_FEATURES_ARTIFACTS = {
     transformERC20: artifacts.TransformERC20Feature,
     metaTransactions: artifacts.MetaTransactionsFeature,
     nativeOrders: artifacts.NativeOrdersFeature,
-    // matchOrders: artifacts.M
+    matchOrders: artifacts.MatchOrdersFeature,
     feeCollectorController: artifacts.FeeCollectorController,
 };
 
@@ -215,16 +216,12 @@ export async function deployFullFeaturesAsync(
             )).address,
         matchOrders:
         features.matchOrders ||
-        (await NativeOrdersFeatureContract.deployFrom0xArtifactAsync(
-            _featureArtifacts.nativeOrders,
+        (await MatchOrdersFeatureContract.deployFrom0xArtifactAsync(
+            _featureArtifacts.matchOrders,
             provider,
             txDefaults,
             artifacts,
             _config.zeroExAddress,
-            _config.wethAddress,
-            _config.stakingAddress,
-            _config.feeCollectorController,
-            _config.protocolFeeMultiplier,
         )).address,
     };
 }
