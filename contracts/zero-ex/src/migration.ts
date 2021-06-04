@@ -16,6 +16,7 @@ import {
     SimpleFunctionRegistryFeatureContract,
     TransformERC20FeatureContract,
     ZeroExContract,
+    MatchOrdersFeatureContract,
 } from './wrappers';
 
 // tslint:disable: completed-docs
@@ -109,6 +110,7 @@ export interface FullFeatures extends BootstrapFeatures {
     transformERC20: string;
     metaTransactions: string;
     nativeOrders: string;
+    matchOrders: string;
 }
 
 /**
@@ -118,6 +120,7 @@ export interface FullFeatureArtifacts extends BootstrapFeatureArtifacts {
     transformERC20: SimpleContractArtifact;
     metaTransactions: SimpleContractArtifact;
     nativeOrders: SimpleContractArtifact;
+    matchOrders: SimpleContractArtifact;
     feeCollectorController: SimpleContractArtifact;
 }
 
@@ -150,6 +153,7 @@ const DEFAULT_FULL_FEATURES_ARTIFACTS = {
     transformERC20: artifacts.TransformERC20Feature,
     metaTransactions: artifacts.MetaTransactionsFeature,
     nativeOrders: artifacts.NativeOrdersFeature,
+    matchOrders: artifacts.MatchOrdersFeature,
     feeCollectorController: artifacts.FeeCollectorController,
 };
 
@@ -210,6 +214,15 @@ export async function deployFullFeaturesAsync(
                 _config.feeCollectorController,
                 _config.protocolFeeMultiplier,
             )).address,
+        matchOrders:
+        features.matchOrders ||
+        (await MatchOrdersFeatureContract.deployFrom0xArtifactAsync(
+            _featureArtifacts.matchOrders,
+            provider,
+            txDefaults,
+            artifacts,
+            _config.zeroExAddress,
+        )).address,
     };
 }
 
@@ -244,6 +257,10 @@ export async function fullMigrateAsync(
         transformerDeployer: txDefaults.from as string,
         ..._config,
     };
+
+    console.log("---------------------------------->");
+    console.log(_features);
+    
     await migrator.migrateZeroEx(owner, zeroEx.address, _features, migrateOpts).awaitTransactionSuccessAsync();
     return new IZeroExContract(zeroEx.address, provider, txDefaults);
 }
