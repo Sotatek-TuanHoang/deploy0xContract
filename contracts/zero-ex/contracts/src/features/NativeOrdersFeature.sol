@@ -53,6 +53,7 @@ contract NativeOrdersFeature is
         )
     {
         // solhint-disable no-empty-blocks
+        uint tuan = 23;
     }
 
     /// @dev Initialize and register this feature.
