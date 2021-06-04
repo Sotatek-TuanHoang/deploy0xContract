@@ -26,7 +26,7 @@ import "../features/TransformERC20Feature.sol";
 import "../features/MetaTransactionsFeature.sol";
 import "../features/NativeOrdersFeature.sol";
 import "./InitialMigration.sol";
-import "./MatchOrdersFeature.sol";
+import "../features/MatchOrdersFeature.sol";
 
 
 /// @dev A contract for deploying and configuring the full ZeroEx contract.

@@ -48,10 +48,13 @@ import * as IUniswapFeature from '../test/generated-artifacts/IUniswapFeature.js
 import * as IUniswapV2Pair from '../test/generated-artifacts/IUniswapV2Pair.json';
 import * as IZeroEx from '../test/generated-artifacts/IZeroEx.json';
 import * as LibBootstrap from '../test/generated-artifacts/LibBootstrap.json';
+import * as LibBytesRichErrors from '../test/generated-artifacts/LibBytesRichErrors.json';
 import * as LibCommonRichErrors from '../test/generated-artifacts/LibCommonRichErrors.json';
 import * as LibERC20Transformer from '../test/generated-artifacts/LibERC20Transformer.json';
+import * as LibExchangeRichErrors from '../test/generated-artifacts/LibExchangeRichErrors.json';
 import * as LibFeeCollector from '../test/generated-artifacts/LibFeeCollector.json';
 import * as LibLiquidityProviderRichErrors from '../test/generated-artifacts/LibLiquidityProviderRichErrors.json';
+import * as LibMathRichErrors from '../test/generated-artifacts/LibMathRichErrors.json';
 import * as LibMetaTransactionsRichErrors from '../test/generated-artifacts/LibMetaTransactionsRichErrors.json';
 import * as LibMetaTransactionsStorage from '../test/generated-artifacts/LibMetaTransactionsStorage.json';
 import * as LibMigrate from '../test/generated-artifacts/LibMigrate.json';
@@ -63,6 +66,8 @@ import * as LibOwnableStorage from '../test/generated-artifacts/LibOwnableStorag
 import * as LibProxyRichErrors from '../test/generated-artifacts/LibProxyRichErrors.json';
 import * as LibProxyStorage from '../test/generated-artifacts/LibProxyStorage.json';
 import * as LibReentrancyGuardStorage from '../test/generated-artifacts/LibReentrancyGuardStorage.json';
+import * as LibRichErrors from '../test/generated-artifacts/LibRichErrors.json';
+import * as LibSafeMathRichErrors from '../test/generated-artifacts/LibSafeMathRichErrors.json';
 import * as LibSignature from '../test/generated-artifacts/LibSignature.json';
 import * as LibSignatureRichErrors from '../test/generated-artifacts/LibSignatureRichErrors.json';
 import * as LibSimpleFunctionRegistryRichErrors from '../test/generated-artifacts/LibSimpleFunctionRegistryRichErrors.json';
@@ -74,6 +79,7 @@ import * as LibWalletRichErrors from '../test/generated-artifacts/LibWalletRichE
 import * as LiquidityProviderFeature from '../test/generated-artifacts/LiquidityProviderFeature.json';
 import * as LiquidityProviderSandbox from '../test/generated-artifacts/LiquidityProviderSandbox.json';
 import * as LogMetadataTransformer from '../test/generated-artifacts/LogMetadataTransformer.json';
+import * as MatchOrdersFeature from '../test/generated-artifacts/MatchOrdersFeature.json';
 import * as MetaTransactionsFeature from '../test/generated-artifacts/MetaTransactionsFeature.json';
 import * as MixinBalancer from '../test/generated-artifacts/MixinBalancer.json';
 import * as MixinBalancerV2 from '../test/generated-artifacts/MixinBalancerV2.json';
@@ -178,6 +184,7 @@ export const artifacts = {
     BatchFillNativeOrdersFeature: BatchFillNativeOrdersFeature as ContractArtifact,
     BootstrapFeature: BootstrapFeature as ContractArtifact,
     LiquidityProviderFeature: LiquidityProviderFeature as ContractArtifact,
+    MatchOrdersFeature: MatchOrdersFeature as ContractArtifact,
     MetaTransactionsFeature: MetaTransactionsFeature as ContractArtifact,
     MultiplexFeature: MultiplexFeature as ContractArtifact,
     NativeOrdersFeature: NativeOrdersFeature as ContractArtifact,
@@ -200,7 +207,12 @@ export const artifacts = {
     ITokenSpenderFeature: ITokenSpenderFeature as ContractArtifact,
     ITransformERC20Feature: ITransformERC20Feature as ContractArtifact,
     IUniswapFeature: IUniswapFeature as ContractArtifact,
+    LibBytesRichErrors: LibBytesRichErrors as ContractArtifact,
+    LibExchangeRichErrors: LibExchangeRichErrors as ContractArtifact,
+    LibMathRichErrors: LibMathRichErrors as ContractArtifact,
     LibNativeOrder: LibNativeOrder as ContractArtifact,
+    LibRichErrors: LibRichErrors as ContractArtifact,
+    LibSafeMathRichErrors: LibSafeMathRichErrors as ContractArtifact,
     LibSignature: LibSignature as ContractArtifact,
     NativeOrdersCancellation: NativeOrdersCancellation as ContractArtifact,
     NativeOrdersInfo: NativeOrdersInfo as ContractArtifact,

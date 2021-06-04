@@ -15,26 +15,54 @@
   limitations under the License.
 
 */
-pragma solidity ^0.5.9;
+pragma solidity ^0.6.5;
 pragma experimental ABIEncoderV2;
 
-import "@0x/contracts-utils/contracts/src/LibBytes.sol";
-import "@0x/contracts-utils/contracts/src/LibRichErrors.sol";
-import "@0x/contracts-exchange-libs/contracts/src/LibExchangeRichErrors.sol";
+import "./libs/LibRichErrors.sol";
+import "./libs/LibExchangeRichErrors.sol";
 import "./libs/LibNativeOrder.sol";
 import "./libs/LibSignature.sol";
 import "./native_orders/NativeOrdersInfo.sol";
-import "@0x/contracts-utils/contracts/src/LibSafeMath.sol";
-import "./libs/LibMath.sol";
+import "@0x/contracts-utils/contracts/src/v06/LibMathV06.sol";
 import "../fixins/FixinTokenSpender.sol";
+import "../fixins/FixinCommon.sol";
 import "../migrations/LibMigrate.sol";
+import "@0x/contracts-utils/contracts/src/v06/LibBytesV06.sol";
+import "@0x/contracts-utils/contracts/src/v06/LibSafeMathV06.sol";
+import "@0x/contracts-erc20/contracts/src/v06/IERC20TokenV06.sol";
 
 contract MatchOrdersFeature is
-    NativeOrdersInfo,
-    FixinTokenSpender
+    FixinCommon,
+    FixinTokenSpender,
+    NativeOrdersInfo
 {
-    using LibBytes for bytes;
-    using LibSafeMath for uint256;
+    using LibBytesV06 for bytes;
+    using LibSafeMathV06 for uint256;
+    using LibSafeMathV06 for uint128;
+
+    event Fill(
+        address indexed makerAddress,         // Address that created the order.
+        address indexed feeRecipientAddress,  // Address that received fees.
+        IERC20TokenV06 makerToken,                 // Encoded data specific to makerAsset.
+        IERC20TokenV06 takerToken,                 // Encoded data specific to takerAsset.
+        bytes32 indexed orderHash,            // EIP712 hash of order (see LibOrder.getTypedDataHash).
+        address takerAddress,                 // Address that filled the order.
+        address senderAddress,                // Address that called the Exchange contract (msg.sender).
+        uint256 makerAssetFilledAmount,       // Amount of makerAsset sold by maker and bought by taker.
+        uint256 takerAssetFilledAmount,       // Amount of takerAsset sold by taker and bought by maker.
+        uint256 makerFeePaid,                 // Amount of makerFeeAssetData paid to feeRecipient by maker.
+        uint256 takerFeePaid,                 // Amount of takerFeeAssetData paid to feeRecipient by taker.
+        uint256 protocolFeePaid               // Amount of eth or weth paid to the staking contract.
+    );
+
+
+    constructor(address zeroExAddress)
+        public
+        FixinCommon()
+        NativeOrdersInfo(zeroExAddress)
+    {
+        // solhint-disable-next-line no-empty-blocks
+    }
 
     function matchOrders(
         LibNativeOrder.LimitOrder memory leftOrder,
@@ -44,7 +72,7 @@ contract MatchOrdersFeature is
     )
         public
         payable
-        refundFinalBalanceNoReentry
+        // refundFinalBalanceNoReentry
         returns (LibNativeOrder.MatchedFillResults memory matchedFillResults)
     {
         return _matchOrders(
@@ -77,8 +105,8 @@ contract MatchOrdersFeature is
         // AND
         // <rightOrder.makerAssetAmount> / <rightOrder.takerAssetAmount> >= <leftOrder.takerAssetAmount> / <leftOrder.makerAssetAmount>
         // These equations can be combined to get the following:
-        if (leftOrder.makerAmount.safeMul(rightOrder.makerAmount) <
-            leftOrder.takerAmount.safeMul(rightOrder.takerAmount)) {
+        if (leftOrder.makerAmount.safeMul128(rightOrder.makerAmount) <
+            leftOrder.takerAmount.safeMul128(rightOrder.takerAmount)) {
             LibRichErrors.rrevert(LibExchangeRichErrors.NegativeSpreadError(
                 leftOrderHash,
                 rightOrderHash
@@ -141,12 +169,15 @@ contract MatchOrdersFeature is
             rightOrderInfo.orderHash
         );
 
+        //todo: change value
+        uint protocolFeeMultiplier = 100;
+
         // Compute proportional fill amounts
         matchedFillResults = calculateMatchedFillResults(
             leftOrder,
             rightOrder,
-            leftOrderInfo.orderTakerAssetFilledAmount,
-            rightOrderInfo.orderTakerAssetFilledAmount,
+            leftOrderInfo.takerTokenFilledAmount,
+            rightOrderInfo.takerTokenFilledAmount,
             protocolFeeMultiplier,
             tx.gasprice,
             shouldMaximallyFillOrders
@@ -157,14 +188,14 @@ contract MatchOrdersFeature is
             leftOrder,
             takerAddress,
             leftOrderInfo.orderHash,
-            leftOrderInfo.orderTakerAssetFilledAmount,
+            leftOrderInfo.takerTokenFilledAmount,
             matchedFillResults.left
         );
         _updateFilledState(
             rightOrder,
             takerAddress,
             rightOrderInfo.orderHash,
-            rightOrderInfo.orderTakerAssetFilledAmount,
+            rightOrderInfo.takerTokenFilledAmount,
             matchedFillResults.right
         );
 
@@ -183,7 +214,6 @@ contract MatchOrdersFeature is
 
     function getOrderInfo(LibNativeOrder.LimitOrder memory order)
     public
-    override
     view
     returns (LibNativeOrder.OrderInfo memory orderInfo)
     {
@@ -194,8 +224,8 @@ contract MatchOrdersFeature is
         // While the Exchange contract handles them correctly, they create
         // edge cases in the supporting infrastructure because they have
         // an 'infinite' price when computed by a simple division.
-        if (order.makerAssetAmount == 0) {
-            orderInfo.orderStatus = LibNativeOrder.OrderStatus.INVALID_MAKER_ASSET_AMOUNT;
+        if (order.makerAmount == 0) {
+            orderInfo.status = LibNativeOrder.OrderStatus.INVALID;
             return orderInfo;
         }
 
@@ -203,8 +233,8 @@ contract MatchOrdersFeature is
         // be considered filled because 0 == takerAssetAmount == orderTakerAssetFilledAmount
         // Instead of distinguishing between unfilled and filled zero taker
         // amount orders, we choose not to support them.
-        if (order.takerAssetAmount == 0) {
-            orderInfo.orderStatus = LibNativeOrder.OrderStatus.INVALID_TAKER_ASSET_AMOUNT;
+        if (order.takerAmount == 0) {
+            orderInfo.status = LibNativeOrder.OrderStatus.INVALID;
             return orderInfo;
         }
 
@@ -216,16 +246,16 @@ contract MatchOrdersFeature is
         LibNativeOrder.LimitOrder memory order,
         LibNativeOrder.OrderInfo memory orderInfo,
         address takerAddress,
-        bytes memory signature
+        LibSignature.Signature memory signature
     )
     internal
     view
     {
         // An order can only be filled if its status is FILLABLE.
-        if (orderInfo.orderStatus != LibNativeOrder.OrderStatus.FILLABLE) {
+        if (orderInfo.status != LibNativeOrder.OrderStatus.FILLABLE) {
             LibRichErrors.rrevert(LibExchangeRichErrors.OrderStatusError(
                     orderInfo.orderHash,
-                        LibNativeOrder.OrderStatus(orderInfo.orderStatus)
+                        LibNativeOrder.OrderStatus(orderInfo.status)
                 ));
         }
 
@@ -255,14 +285,12 @@ contract MatchOrdersFeature is
         {
             address signer = LibSignature.getSignerOfHash(
                 orderInfo.orderHash,
-                params.signature
+                signature
             );
             if (signer != order.maker) {
                 LibRichErrors.rrevert(LibExchangeRichErrors.SignatureError(
                     LibExchangeRichErrors.SignatureErrorCodes.BAD_ORDER_SIGNATURE,
-                    orderInfo.orderHash,
-                    order.maker,
-                    signature
+                    orderInfo.orderHash
                 ));
             }
         }
@@ -283,13 +311,13 @@ contract MatchOrdersFeature is
     {
         // Derive maker asset amounts for left & right orders, given store taker assert amounts
         uint256 leftTakerAssetAmountRemaining = leftOrder.takerAmount.safeSub(leftOrderTakerAssetFilledAmount);
-        uint256 leftMakerAssetAmountRemaining = LibMath.safeGetPartialAmountFloor(
+        uint256 leftMakerAssetAmountRemaining = LibMathV06.safeGetPartialAmountFloor(
             leftOrder.makerAmount,
             leftOrder.takerAmount,
             leftTakerAssetAmountRemaining
         );
         uint256 rightTakerAssetAmountRemaining = rightOrder.takerAmount.safeSub(rightOrderTakerAssetFilledAmount);
-        uint256 rightMakerAssetAmountRemaining = LibMath.safeGetPartialAmountFloor(
+        uint256 rightMakerAssetAmountRemaining = LibMathV06.safeGetPartialAmountFloor(
             rightOrder.makerAmount,
             rightOrder.takerAmount,
             rightTakerAssetAmountRemaining
@@ -317,24 +345,24 @@ contract MatchOrdersFeature is
         }
 
         // Compute fees for left order
-        matchedFillResults.left.makerFeePaid = LibMath.safeGetPartialAmountFloor(
+        matchedFillResults.left.makerFeePaid = LibMathV06.safeGetPartialAmountFloor(
             matchedFillResults.left.makerAssetFilledAmount,
             leftOrder.makerAmount,
             leftOrder.takerTokenFeeAmount
         );
-        matchedFillResults.left.takerFeePaid = LibMath.safeGetPartialAmountFloor(
+        matchedFillResults.left.takerFeePaid = LibMathV06.safeGetPartialAmountFloor(
             matchedFillResults.left.takerAssetFilledAmount,
             leftOrder.takerAmount,
             leftOrder.takerTokenFeeAmount
         );
 
         // Compute fees for right order
-        matchedFillResults.right.makerFeePaid = LibMath.safeGetPartialAmountFloor(
+        matchedFillResults.right.makerFeePaid = LibMathV06.safeGetPartialAmountFloor(
             matchedFillResults.right.makerAssetFilledAmount,
             rightOrder.makerAmount,
             rightOrder.takerTokenFeeAmount
         );
-        matchedFillResults.right.takerFeePaid = LibMath.safeGetPartialAmountFloor(
+        matchedFillResults.right.takerFeePaid = LibMathV06.safeGetPartialAmountFloor(
             matchedFillResults.right.takerAssetFilledAmount,
             rightOrder.takerAmount,
             rightOrder.takerTokenFeeAmount
@@ -387,7 +415,7 @@ contract MatchOrdersFeature is
             matchedFillResults.right.makerAssetFilledAmount = leftTakerAssetAmountRemaining;
             // Round up to ensure the maker's exchange rate does not exceed the price specified by the order.
             // We favor the maker when the exchange rate must be rounded.
-            matchedFillResults.right.takerAssetFilledAmount = LibMath.safeGetPartialAmountCeil(
+            matchedFillResults.right.takerAssetFilledAmount = LibMathV06.safeGetPartialAmountCeil(
                 rightOrder.takerAmount,
                 rightOrder.makerAmount,
                 leftTakerAssetAmountRemaining // matchedFillResults.right.makerAssetFilledAmount
@@ -427,7 +455,7 @@ contract MatchOrdersFeature is
         // Round down to ensure the left maker's exchange rate does not exceed the price specified by the order.
         // We favor the left maker when the exchange rate must be rounded and the profit is being paid in the
         // left maker asset.
-        matchedFillResults.left.makerAssetFilledAmount = LibMath.safeGetPartialAmountFloor(
+        matchedFillResults.left.makerAssetFilledAmount = LibMathV06.safeGetPartialAmountFloor(
             leftOrder.makerAmount,
             leftOrder.takerAmount,
             rightMakerAssetAmountRemaining
@@ -541,13 +569,13 @@ contract MatchOrdersFeature is
         // Settle taker fees.
         if (
             leftFeeRecipientAddress == rightFeeRecipientAddress &&
-            leftOrder.takerTokenFeeAmount.equals(rightOrder.takerTokenFeeAmount)
+            leftOrder.takerTokenFeeAmount == rightOrder.takerTokenFeeAmount
         ) {
             // Fee recipients and taker fee assets are identical, so we can
             // transfer them in one go.
 
             _transferERC20Tokens(
-                leftOrder.takerTokenFeeAmount,
+                leftOrder.makerToken,
                 takerAddress,
                 leftFeeRecipientAddress,
                 matchedFillResults.left.takerFeePaid.safeAdd(matchedFillResults.right.takerFeePaid)
@@ -556,7 +584,7 @@ contract MatchOrdersFeature is
             // Right taker fee -> right fee recipient
 
             _transferERC20Tokens(
-                leftOrder.takerTokenFeeAmount,
+                leftOrder.makerToken,
                 takerAddress,
                 leftFeeRecipientAddress,
                 matchedFillResults.left.takerFeePaid
@@ -564,7 +592,7 @@ contract MatchOrdersFeature is
 
 
             _transferERC20Tokens(
-                rightOrder.takerTokenFeeAmount,
+                rightOrder.takerToken,
                 takerAddress,
                 rightFeeRecipientAddress,
                 matchedFillResults.right.takerFeePaid
@@ -595,8 +623,6 @@ contract MatchOrdersFeature is
             order.feeRecipient,
             order.makerToken,
             order.takerToken,
-            order.makerToken,
-            order.takerToken,
             orderHash,
             takerAddress,
             msg.sender,
@@ -613,15 +639,15 @@ contract MatchOrdersFeature is
     returns (bytes4 success)
     {
         _registerFeatureFunction(this.matchOrders.selector);
-        _registerFeatureFunction(this._assertValidMatch.selector);
-        _registerFeatureFunction(this._matchOrders.selector);
-        _registerFeatureFunction(this.getOrderInfo.selector);
-        _registerFeatureFunction(this._assertFillableOrder.selector);
-        _registerFeatureFunction(this.calculateMatchedFillResults.selector);
-        _registerFeatureFunction(this._calculateMatchedFillResults.selector);
-        _registerFeatureFunction(this._calculateCompleteRightFill.selector);
-        _registerFeatureFunction(this._calculateCompleteFillBoth.selector);
-        _registerFeatureFunction(this._settleMatchedOrders.selector);
+        // _registerFeatureFunction(this._assertValidMatch.selector);
+        // _registerFeatureFunction(this._matchOrders.selector);
+        // _registerFeatureFunction(this.getOrderInfo.selector);
+        // _registerFeatureFunction(this._assertFillableOrder.selector);
+        // _registerFeatureFunction(this.calculateMatchedFillResults.selector);
+        // _registerFeatureFunction(this._calculateMatchedFillResults.selector);
+        // _registerFeatureFunction(this._calculateCompleteRightFill.selector);
+        // _registerFeatureFunction(this._calculateCompleteFillBoth.selector);
+        // _registerFeatureFunction(this._settleMatchedOrders.selector);
         return LibMigrate.MIGRATE_SUCCESS;
     }
 }
